@@ -1,7 +1,12 @@
 import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.ArrayList;
+import java.io.*;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  * The ExpenseTrackerApp implements an console based application 
@@ -25,14 +30,45 @@ public class ExpenseTrackerApp {
 /**
  * Represents the console user interface for the Expense Tracker App
  * @author Joey Han
- * @version 1.0
+ * @version 1.1
  * @since 1.0
  */
 class ExpenseTrackerUI {
+    //Variables and objects
     Scanner scanner = new Scanner(System.in);
+    boolean done = false;
+
+    /**
+     * Runs the expense tracker application
+     */
     public void run() {
         System.out.println("Welcome to Expense Tracker!");
-        getExpenses();
+    
+        while(!done) {
+            System.out.println("What would you like to do?");
+            System.out.println("1. Add Expenses into an Excel file");
+            System.out.println("2. Exit Program");
+            System.out.print("Enter your choice: ");
+    
+            String userInput = scanner.nextLine().trim();
+            //Checking whether the input is a integer
+            if(isValidInteger(userInput)) {
+                int choice = Integer.parseInt(userInput);
+                switch(choice) {
+                    case 1:
+                        generateExcelFile(getExpenses());
+                        break;
+                    case 2:
+                        done = true;
+                        System.out.println("Exiting Expense Tracker. Goodbye!");
+                        break;
+                    default:
+                        System.out.println("Invalid choice. Please enter a number from the list of options.");
+                }
+            } else {
+                System.out.println("Invalid input. Please enter a number.");
+            }
+        }
     }
 
     /**
@@ -40,10 +76,11 @@ class ExpenseTrackerUI {
      * @return A Arraylist of expenses that is asked from the user
      */
     private ArrayList<Expense> getExpenses() {
+        //Variables and objects
         ArrayList<Expense> expenses = new ArrayList<Expense>();
         boolean done = false;
         //Keep looping till user doesn't have any more expenses
-        while (!done) {
+        while(!done) {
             String category = pickCategory();
             Double amount = getExpenseAmount();
             String date = getExpenseDate();
@@ -56,29 +93,26 @@ class ExpenseTrackerUI {
     
             //Add the Expense object to the expenses list
             expenses.add(expense);
-    
+
             //Ask the user for more expenses
             System.out.print("Is there any more expenses? ");
-            String userInput = scanner.next();
-            switch (userInput.toLowerCase()) {
-                case "yes":
-                    done = false;
-                    break;
-                case "no":
-                    done = true;
-                    break;
-                default:
-                    done = false;
-                    System.out.println("Please type either Yes or No!");
+            String userInput = scanner.nextLine().trim().toLowerCase();
+            //Loop till user say Yes or No
+            while(!userInput.equals("yes") && !userInput.equals("no")) {
+                System.out.println("Please type either Yes or No!");
+                userInput = scanner.nextLine().trim().toLowerCase();
+            }
+            if(userInput.equals("no")) {
+                done = true;
             }
         }
     
         //Testing purposes
-        for (Expense expense : expenses) {
-            System.out.println("Category: " + expense.getCategory() +
-                    ", Amount: " + expense.getAmount() +
-                    ", Date: " + expense.getDate());
-        }
+        // for(Expense expense : expenses) {
+        //     System.out.println("Category: " + expense.getCategory() +
+        //         ", Amount: " + expense.getAmount() +
+        //         ", Date: " + expense.getDate());
+        // }
     
         return expenses;
     }
@@ -88,7 +122,7 @@ class ExpenseTrackerUI {
      * @return A String representing the expense category that the user picked
      */
     private String pickCategory() {
-        //Arrays and Arraylists
+        //Arraylists
         String[] categoriesArray = {
             "Housing", "Transportation", "Food", "Utilities", "Healthcare",
             "Debt Payments", "Entertainment", "Personal Care", "Education",
@@ -102,20 +136,21 @@ class ExpenseTrackerUI {
             System.out.println(counter + ": " + categoriesArray[i]);
         }
     
-        //Loops until the user picks a category that is in the category array
+        //Loop until the user picks a category that is in the category array
         while(true) {
             System.out.print("Enter your choice: ");
-            String choice = scanner.next();
+            String choice = scanner.nextLine().trim();
+            //Checking whether user input is an integer
             if(isValidInteger(choice)) {
-            //Checking if the user inputs a category number that is array range
+                //Checking if the user inputs a category number that is in the array range
                 int choiceNum = Integer.valueOf(choice);
-                if (choiceNum < 1 || choiceNum > 13) {
-                    System.out.println("Invalid choice. Please enter a number between 1 and 13.");
+                if(choiceNum < 1 || choiceNum > categoriesArray.length) {
+                    System.out.println("Invalid choice. Please enter a number between 1 and " + categoriesArray.length + ".");
                 } else {
-                    return categoriesArray[choiceNum-1];
+                    return categoriesArray[choiceNum - 1];
                 }
             } else {
-                System.out.println("Invalid choice. Please enter a number between 1 and 13.");
+                System.out.println("Invalid choice. Please enter a number between 1 and " + categoriesArray.length + ".");
             }
         }
     }
@@ -127,11 +162,12 @@ class ExpenseTrackerUI {
     private Double getExpenseAmount() {
         while(true) {
             System.out.print("Expense Amount: ");
-            String userAmount = scanner.next();
-            if (isValidDouble(userAmount)) {
+            String userAmount = scanner.nextLine().trim();
+            //Checking whether the user inputted a double or negatives
+            if(isValidDouble(userAmount) && Double.parseDouble(userAmount) >= 0) {
                 return Math.round(Double.parseDouble(userAmount) * 100.0) / 100.0;
             } else {
-                System.out.println(userAmount + " is not a valid currency number!");
+                System.out.println("Invalid input. Please enter a valid currency number!");
             }
         }
     }
@@ -144,15 +180,20 @@ class ExpenseTrackerUI {
         Pattern datePattern = Pattern.compile("^\\d{2}/\\d{2}/\\d{4}$");
         while(true) {
             System.out.print("Date of Expenses: ");
-            String userDate = scanner.next();
+            String userDate = scanner.nextLine().trim();
+            //Checking for empty inputs
+            if(userDate.isEmpty()) {
+                System.out.println("Date cannot be empty. Please enter a valid date.");
+                continue;
+            }
             Matcher matcher = datePattern.matcher(userDate);
             boolean matched = matcher.find();
+            //Checking whether the user input date format is correct
             if(matched) {
                 String[] dateParts = userDate.split("/");
                 int day = Integer.parseInt(dateParts[0]);
                 int month = Integer.parseInt(dateParts[1]);
-                int year = Integer.parseInt(dateParts[2]);
-                if (month < 1 || month > 12 || day < 1 || day > 31) {
+                if(month < 1 || month > 12 || day < 1 || day > 31) {
                     System.out.println("You are only allowed to input days between 1-31 and months between 1-12!");
                     continue;
                 } else {
@@ -160,6 +201,64 @@ class ExpenseTrackerUI {
                 }
             } else {
                 System.out.println("Please enter in the format dd/mm/yyyy!");
+            }
+        }
+    }
+
+    /**
+     * Generates an Excel file containing the user's expenses.
+     * @param expenses An ArrayList of Expense objects representing the user's expenses.
+     */
+    public void generateExcelFile(ArrayList<Expense> expenses) {
+        //Sort expenses based on category before writing to the file
+        expenses.sort(Comparator.comparing(Expense::getCategory));
+
+        while(true) {
+            //Ask the user to choose the location for saving the file
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Save As");
+            FileNameExtensionFilter filter = new FileNameExtensionFilter("Excel files", "xlsx");
+            fileChooser.setFileFilter(filter);
+
+            int userSelection = fileChooser.showSaveDialog(null);
+            if(userSelection == JFileChooser.APPROVE_OPTION) {
+                java.io.File fileToSave = fileChooser.getSelectedFile();
+                String filePath = fileToSave.getAbsolutePath();
+
+                //Check if the file extension is provided, if not add .xlsx extension
+                if(!filePath.toLowerCase().endsWith(".xlsx")) {
+                    filePath += ".xlsx";
+                }
+
+                try {
+                    //Create BufferedWriter to write data to the Excel file
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
+
+                    //Write header row
+                    writer.write("Category,Amount,Date\n");
+
+                    //Write each expense to the file
+                    for(Expense expense : expenses) {
+                        writer.write(expense.getCategory() + "," + expense.getAmount() + "," + expense.getDate() + "\n");
+                    }
+
+                    //Close the writer
+                    writer.close();
+
+                    System.out.println("Excel file saved successfully at: " + filePath);
+                    break; // Exit the loop if the file is saved successfully
+                } catch(IOException e) {
+                    System.out.println("An error occurred while saving the Excel file.");
+                    e.printStackTrace();
+                }
+            } else if(userSelection == JFileChooser.CANCEL_OPTION) {
+                //Testing purposes
+                // System.out.println("Save command cancelled by the user.");
+                //Checking if user wants to save or not in case of misclicks
+                int option = JOptionPane.showConfirmDialog(null, "Do you want to try saving again?", "Save Again", JOptionPane.YES_NO_OPTION);
+                if(option == JOptionPane.NO_OPTION) {
+                    break;
+                }
             }
         }
     }
@@ -191,8 +290,6 @@ class ExpenseTrackerUI {
             return false;
         }
     }
-
-
 }
 
 /**
