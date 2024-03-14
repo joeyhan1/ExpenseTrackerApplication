@@ -3,6 +3,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.text.ParseException;
 import java.io.*;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -30,7 +33,7 @@ public class ExpenseTrackerApp {
 /**
  * Represents the console user interface for the Expense Tracker App
  * @author Joey Han
- * @version 1.1
+ * @version 1.2
  * @since 1.0
  */
 class ExpenseTrackerUI {
@@ -47,9 +50,10 @@ class ExpenseTrackerUI {
         while(!done) {
             System.out.println("What would you like to do?");
             System.out.println("1. Add Expenses into an Excel file");
-            System.out.println("2. Exit Program");
+            System.out.println("2. Generate total expenses for a specific period");
+            System.out.println("3. Exit Program");
             System.out.print("Enter your choice: ");
-    
+
             String userInput = scanner.nextLine().trim();
             //Checking whether the input is a integer
             if(isValidInteger(userInput)) {
@@ -57,8 +61,11 @@ class ExpenseTrackerUI {
                 switch(choice) {
                     case 1:
                         generateExcelFile(getExpenses());
-                        break;
+                    break;
                     case 2:
+                        generateStatistics();
+                        break;
+                    case 3:
                         done = true;
                         System.out.println("Exiting Expense Tracker. Goodbye!");
                         break;
@@ -259,6 +266,89 @@ class ExpenseTrackerUI {
                 if(option == JOptionPane.NO_OPTION) {
                     break;
                 }
+            }
+        }
+    }
+
+    /**
+     * Generates total expenses from start and end period that the user specifies using the user picked expenses excel file
+     */
+    public void generateStatistics() {
+        //Ask the user to select an Excel file
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Select Excel File");
+        FileNameExtensionFilter filter = new FileNameExtensionFilter("Excel files", "xlsx");
+        fileChooser.setFileFilter(filter);
+    
+        int userSelection = fileChooser.showOpenDialog(null);
+        if(userSelection == JFileChooser.APPROVE_OPTION) {
+            //Read expenses from the selected file
+            java.io.File selectedFile = fileChooser.getSelectedFile();
+            String filePath = selectedFile.getAbsolutePath();
+            try(BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+                ArrayList<Expense> expenses = new ArrayList<>();
+                String line;
+                //Skip header row
+                reader.readLine();
+                //Getting all the expenses in the excel file and making them into expenses
+                while((line = reader.readLine()) != null) {
+                    String[] parts = line.split(",");
+                    String category = parts[0];
+                    double amount = Double.parseDouble(parts[1]);
+                    String date = parts[2];
+                    Expense expense = new Expense();
+                    expense.setCategory(category);
+                    expense.setAmount(amount);
+                    expense.setDate(date);
+                    expenses.add(expense);
+                }
+    
+                //Regex pattern for date in the format dd/MM/yyyy
+                Pattern datePattern = Pattern.compile("^\\d{2}/\\d{2}/\\d{4}$");
+    
+                //Ask the user for start and end dates
+                SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+                Date startDate, endDate;
+                while(true) {
+                    System.out.print("Enter start date (dd/MM/yyyy): ");
+                    String startDateStr = scanner.nextLine().trim();
+                    System.out.print("Enter end date (dd/MM/yyyy): ");
+                    String endDateStr = scanner.nextLine().trim();
+    
+                    //Validate start date format using regex
+                    Matcher startMatcher = datePattern.matcher(startDateStr);
+                    //Validate end date format using regex
+                    Matcher endMatcher = datePattern.matcher(endDateStr);
+    
+                    if(startMatcher.matches() && endMatcher.matches()) {
+                        try {
+                            startDate = dateFormat.parse(startDateStr);
+                            endDate = dateFormat.parse(endDateStr);
+                            break;
+                        } catch(ParseException e) {
+                            System.out.println("Invalid date format. Please enter dates in the format dd/MM/yyyy.");
+                        }
+                    } else {
+                        System.out.println("Invalid date format. Please enter dates in the format dd/MM/yyyy.");
+                    }
+                }
+    
+                //Calculate total expenses within the specified date range
+                double totalExpenses = 0;
+                for(Expense expense : expenses) {
+                    Date expenseDate = dateFormat.parse(expense.getDate());
+                    if(!expenseDate.before(startDate) && !expenseDate.after(endDate)) {
+                        totalExpenses += expense.getAmount();
+                    }
+                }
+
+                totalExpenses = Math.round(totalExpenses * 100.0) / 100.0;
+    
+                //Display total expenses to the user
+                System.out.println("Total expenses from " + dateFormat.format(startDate) + " to " + dateFormat.format(endDate) + ": $" + totalExpenses);
+            } catch(IOException | ParseException e) {
+                System.out.println("An error occurred while reading the Excel file.");
+                e.printStackTrace();
             }
         }
     }
